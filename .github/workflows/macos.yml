@@ -11,5 +11,7 @@ jobs:
       run: rustup update stable
     - name: Install ganache-cli
       run: sudo npm install -g ganache-cli
+    - name: Check number of allowed open file descriptors
+      run: ulimit -n
     - name: Run tests in debug
       run: make test-debug
