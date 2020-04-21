@@ -32,7 +32,6 @@ use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
 use slog::{info, warn};
 use std::net::SocketAddr;
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::runtime::TaskExecutor;
@@ -126,15 +125,4 @@ pub fn start_server<T: BeaconChainTypes>(
     executor.spawn(server_future);
 
     Ok((exit_signal, actual_listen_addr))
-}
-
-#[derive(Clone)]
-pub struct DBPath(PathBuf);
-
-impl Deref for DBPath {
-    type Target = PathBuf;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
 }
