@@ -1,6 +1,7 @@
 use crate::config::{ClientGenesis, Config as ClientConfig};
 use crate::notifier::spawn_notifier;
 use crate::Client;
+use beacon_chain::events::ServerSentEvents;
 use beacon_chain::{
     builder::{BeaconChainBuilder, Witness},
     eth1_chain::{CachingEth1Backend, Eth1Chain},
@@ -15,6 +16,7 @@ use eth2_config::Eth2Config;
 use eth2_libp2p::NetworkGlobals;
 use futures::{future, Future, IntoFuture};
 use genesis::{interop_genesis_state, Eth1GenesisService};
+use multiqueue2 as multiqueue;
 use network::{NetworkConfig, NetworkMessage, NetworkService};
 use slog::info;
 use ssz::Decode;
@@ -23,7 +25,10 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
-use types::{test_utils::generate_deterministic_keypairs, BeaconState, ChainSpec, EthSpec};
+use types::{
+    test_utils::generate_deterministic_keypairs, BeaconState, ChainSpec, EthSpec,
+    SignedBeaconBlockHash,
+};
 use websocket_server::{Config as WebSocketConfig, WebSocketSender};
 
 /// Interval between polling the eth1 node for genesis information.
@@ -299,6 +304,7 @@ where
         mut self,
         client_config: &ClientConfig,
         eth2_config: &Eth2Config,
+        events_receiver: multiqueue::MPMCFutReceiver<SignedBeaconBlockHash>,
     ) -> Result<Self, String> {
         let beacon_chain = self
             .beacon_chain
@@ -336,6 +342,7 @@ where
                 .map_err(|_| "unable to read freezer DB dir")?,
             eth2_config.clone(),
             context.log,
+            events_receiver,
         )
         .map_err(|e| format!("Failed to start HTTP API: {:?}", e))?;
 
@@ -482,6 +489,40 @@ where
         self.websocket_listen_addr = listening_addr;
 
         Ok(self)
+    }
+}
+
+impl<TStore, TStoreMigrator, TSlotClock, TEth1Backend, TEthSpec>
+    ClientBuilder<
+        Witness<
+            TStore,
+            TStoreMigrator,
+            TSlotClock,
+            TEth1Backend,
+            TEthSpec,
+            ServerSentEvents<TEthSpec>,
+        >,
+    >
+where
+    TStore: Store<TEthSpec> + 'static,
+    TStoreMigrator: Migrate<TStore, TEthSpec>,
+    TSlotClock: SlotClock + 'static,
+    TEth1Backend: Eth1ChainBackend<TEthSpec, TStore> + 'static,
+    TEthSpec: EthSpec + 'static,
+{
+    /// Specifies that the `BeaconChain` should publish events using the WebSocket server.
+    pub fn server_sent_events_event_handler(
+        mut self,
+    ) -> Result<(Self, multiqueue::MPMCFutReceiver<SignedBeaconBlockHash>), String> {
+        let context = self
+            .runtime_context
+            .as_ref()
+            .ok_or_else(|| "server_sent_events_event_handler requires a runtime_context")?
+            .service_context("ws".into());
+
+        let (sse, receiver) = ServerSentEvents::new(context.log.clone());
+        self.event_handler = Some(sse);
+        Ok((self, receiver))
     }
 }
 

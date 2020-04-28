@@ -30,12 +30,14 @@ use hyper::rt::Future;
 use hyper::server::conn::AddrStream;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
+use multiqueue2 as multiqueue;
 use slog::{info, warn};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::runtime::TaskExecutor;
 use tokio::sync::{mpsc, oneshot};
+use types::SignedBeaconBlockHash;
 use url_query::UrlQuery;
 
 pub use crate::helpers::parse_pubkey_bytes;
@@ -60,6 +62,7 @@ pub fn start_server<T: BeaconChainTypes>(
     freezer_db_path: PathBuf,
     eth2_config: Eth2Config,
     log: slog::Logger,
+    events_receiver: multiqueue::MPMCFutReceiver<SignedBeaconBlockHash>,
 ) -> Result<(oneshot::Sender<()>, SocketAddr), hyper::Error> {
     let inner_log = log.clone();
     let eth2_config = Arc::new(eth2_config);
@@ -73,6 +76,7 @@ pub fn start_server<T: BeaconChainTypes>(
         let network_channel = network_info.network_chan.clone();
         let db_path = db_path.clone();
         let freezer_db_path = freezer_db_path.clone();
+        let events_receiver = events_receiver.clone();
 
         service_fn(move |req: Request<Body>| {
             router::route(
@@ -84,6 +88,7 @@ pub fn start_server<T: BeaconChainTypes>(
                 log.clone(),
                 db_path.clone(),
                 freezer_db_path.clone(),
+                events_receiver.clone(),
             )
         })
     });

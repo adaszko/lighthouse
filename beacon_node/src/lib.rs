@@ -10,10 +10,10 @@ pub use client::{Client, ClientBuilder, ClientConfig, ClientGenesis};
 pub use config::{get_data_dir, get_eth2_testnet_config, get_testnet_dir};
 pub use eth2_config::Eth2Config;
 
+use beacon_chain::events::ServerSentEvents;
 use beacon_chain::migrate::{BackgroundMigrator, DiskStore};
 use beacon_chain::{
-    builder::Witness, eth1_chain::CachingEth1Backend, events::WebSocketSender,
-    slot_clock::SystemTimeSlotClock,
+    builder::Witness, eth1_chain::CachingEth1Backend, slot_clock::SystemTimeSlotClock,
 };
 use clap::ArgMatches;
 use config::get_config;
@@ -31,7 +31,7 @@ pub type ProductionClient<E> = Client<
         SystemTimeSlotClock,
         CachingEth1Backend<E, DiskStore<E>>,
         E,
-        WebSocketSender<E>,
+        ServerSentEvents<E>,
     >,
 >;
 
@@ -120,13 +120,13 @@ impl<E: EthSpec> ProductionBeaconNode<E> {
 
                 let builder = builder
                     .system_time_slot_clock()?
-                    .websocket_event_handler(client_config.websocket_server.clone())?
                     .build_beacon_chain()?
                     .network(&mut client_config.network)?
                     .notifier()?;
 
                 let builder = if client_config.rest_api.enabled {
-                    builder.http_server(&client_config, &http_eth2_config)?
+                    let (builder, receiver) = builder.server_sent_events_event_handler()?;
+                    builder.http_server(&client_config, &http_eth2_config, receiver)?
                 } else {
                     builder
                 };

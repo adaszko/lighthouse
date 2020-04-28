@@ -5,13 +5,14 @@ use crate::{
 use beacon_chain::{BeaconChain, BeaconChainTypes};
 use eth2_config::Eth2Config;
 use eth2_libp2p::NetworkGlobals;
-use futures::{Future, IntoFuture};
+use futures::{Future, IntoFuture, Stream};
 use hyper::{Body, Error, Method, Request, Response};
+use multiqueue2 as multiqueue;
 use slog::debug;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
-use types::Slot;
+use types::{SignedBeaconBlockHash, Slot};
 
 fn into_boxfut<F: IntoFuture + 'static>(item: F) -> BoxFut
 where
@@ -32,6 +33,7 @@ pub fn route<T: BeaconChainTypes>(
     local_log: slog::Logger,
     db_path: PathBuf,
     freezer_db_path: PathBuf,
+    events_receiver: multiqueue::MPMCFutReceiver<SignedBeaconBlockHash>,
 ) -> impl Future<Item = Response<Body>, Error = Error> {
     metrics::inc_counter(&metrics::REQUEST_COUNT);
     let timer = metrics::start_timer(&metrics::REQUEST_RESPONSE_TIME);
@@ -90,6 +92,12 @@ pub fn route<T: BeaconChainTypes>(
                 into_boxfut(beacon::get_block_root::<T>(req, beacon_chain))
             }
             (&Method::GET, "/beacon/fork") => into_boxfut(beacon::get_fork::<T>(req, beacon_chain)),
+            (&Method::GET, "/beacon/fork/stream") => {
+                let stream = Box::new(events_receiver.map_err(|_| {
+                    ApiError::ServerError("Got unexpected () (unit) error".to_string())
+                }));
+                into_boxfut(beacon::stream_forks::<T>(req, beacon_chain, stream))
+            }
             (&Method::GET, "/beacon/genesis_time") => {
                 into_boxfut(beacon::get_genesis_time::<T>(req, beacon_chain))
             }

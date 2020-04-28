@@ -4,17 +4,20 @@ use crate::validator::get_state_for_epoch;
 use crate::{ApiError, ApiResult, BoxFut, UrlQuery};
 use beacon_chain::{BeaconChain, BeaconChainTypes, StateSkipConfig};
 use futures::{Future, Stream};
-use hyper::{Body, Request};
+use hyper::{Body, Chunk, Request, Response};
 use rest_types::{
     BlockResponse, CanonicalHeadResponse, Committee, HeadBeaconBlock, StateResponse,
     ValidatorRequest, ValidatorResponse,
 };
+use std::io::Write;
 use std::sync::Arc;
 use store::Store;
+
 use types::{
     AttesterSlashing, BeaconState, EthSpec, Hash256, ProposerSlashing, PublicKeyBytes,
-    RelativeEpoch, Slot,
+    RelativeEpoch, SignedBeaconBlockHash, Slot,
 };
+use uhttp_sse;
 
 /// HTTP handler to return a `BeaconBlock` at a given `root` or `slot`.
 pub fn get_head<T: BeaconChainTypes>(
@@ -121,6 +124,25 @@ pub fn get_block_root<T: BeaconChainTypes>(
     })?;
 
     ResponseBuilder::new(&req)?.body(&root)
+}
+
+pub fn stream_forks<T: BeaconChainTypes>(
+    _req: Request<Body>,
+    _beacon_chain: Arc<BeaconChain<T>>,
+    events: Box<dyn Stream<Item = SignedBeaconBlockHash, Error = ApiError> + Send>,
+) -> ApiResult {
+    let stream = events.and_then(|new_head_hash| {
+        let mut buffer = Vec::new();
+        {
+            let mut sse_message = uhttp_sse::SseMessage::new(&mut buffer[..]);
+            write!(sse_message.data()?, "{}", new_head_hash)?;
+        }
+        let chunk: Chunk = buffer.into();
+        Ok(chunk)
+    });
+    let body: Body = Body::wrap_stream(stream);
+    let response = Response::new(body);
+    Ok(response)
 }
 
 /// HTTP handler to return the `Fork` of the current head.
