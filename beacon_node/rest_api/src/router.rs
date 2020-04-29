@@ -96,7 +96,7 @@ pub fn route<T: BeaconChainTypes>(
                 let stream = Box::new(events_receiver.map_err(|_| {
                     ApiError::ServerError("Got unexpected () (unit) error".to_string())
                 }));
-                into_boxfut(beacon::stream_forks::<T>(req, beacon_chain, stream))
+                into_boxfut(beacon::stream_forks::<T>(stream))
             }
             (&Method::GET, "/beacon/genesis_time") => {
                 into_boxfut(beacon::get_genesis_time::<T>(req, beacon_chain))

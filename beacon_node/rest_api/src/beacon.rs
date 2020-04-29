@@ -127,8 +127,6 @@ pub fn get_block_root<T: BeaconChainTypes>(
 }
 
 pub fn stream_forks<T: BeaconChainTypes>(
-    _req: Request<Body>,
-    _beacon_chain: Arc<BeaconChain<T>>,
     events: Box<dyn Stream<Item = SignedBeaconBlockHash, Error = ApiError> + Send>,
 ) -> ApiResult {
     let stream = events.and_then(|new_head_hash| {
