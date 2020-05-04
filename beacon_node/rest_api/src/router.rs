@@ -228,9 +228,11 @@ pub fn route<T: BeaconChainTypes>(
             (&Method::GET, "/lighthouse/connected_peers") => into_boxfut(
                 lighthouse::connected_peers::<T::EthSpec>(req, network_globals),
             ),
-            _ => Box::new(futures::future::err(ApiError::NotFound(
-                "Request path and/or method not found.".to_owned(),
-            ))),
+            (method, path) => {
+                dbg!(method);
+                dbg!(path);
+                Box::new(futures::future::err(ApiError::NotFound("Request path and/or method not found.".to_owned())))
+            },
         };
 
     // Map the Rust-friendly `Result` in to a http-friendly response. In effect, this ensures that

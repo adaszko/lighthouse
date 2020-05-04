@@ -130,12 +130,16 @@ pub fn stream_forks<T: BeaconChainTypes>(
     events: Box<dyn Stream<Item = SignedBeaconBlockHash, Error = ApiError> + Send>,
 ) -> ApiResult {
     let stream = events.and_then(|new_head_hash| {
+        dbg!(&new_head_hash);
         let mut buffer = Vec::new();
-        {
-            let mut sse_message = uhttp_sse::SseMessage::new(&mut buffer[..]);
-            write!(sse_message.data()?, "{}", new_head_hash)?;
-        }
+        write!(buffer, "{}", new_head_hash)?;
+        dbg!(&buffer);
+        // {
+        //     let mut sse_message = uhttp_sse::SseMessage::new(&mut buffer);
+        //     write!(sse_message.data()?, "{}", new_head_hash)?;
+        // }
         let chunk: Chunk = buffer.into();
+        dbg!(&chunk);
         Ok(chunk)
     });
     let body: Body = Body::wrap_stream(stream);

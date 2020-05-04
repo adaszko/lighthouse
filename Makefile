@@ -6,11 +6,11 @@ EF_TESTS = "tests/ef_tests"
 #
 # Binaries will most likely be found in `./target/release`
 install:
-	cargo install --path lighthouse --force --locked
+	cargo install --path lighthouse --force --locked --offline
 
 # Builds the lcli binary in release (optimized).
 install-lcli:
-	cargo install --path lcli --force --locked
+	cargo install --path lcli --force --locked --offline
 
 # Runs the full workspace tests in **release**, without downloading any additional
 # test vectors.

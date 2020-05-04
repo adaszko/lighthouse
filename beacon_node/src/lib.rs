@@ -118,14 +118,16 @@ impl<E: EthSpec> ProductionBeaconNode<E> {
                     builder.no_eth1_backend()?
                 };
 
-                let builder = builder
+                let (builder, receiver) = builder
                     .system_time_slot_clock()?
+                    .server_sent_events_event_handler()?;
+
+                let builder = builder
                     .build_beacon_chain()?
                     .network(&mut client_config.network)?
                     .notifier()?;
 
                 let builder = if client_config.rest_api.enabled {
-                    let (builder, receiver) = builder.server_sent_events_event_handler()?;
                     builder.http_server(&client_config, &http_eth2_config, receiver)?
                 } else {
                     builder
