@@ -19,7 +19,7 @@ use types::{
 type BlockNumber = u64;
 type Eth1DataVoteCount = HashMap<(Eth1Data, BlockNumber), u64>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum Error {
     /// Unable to return an Eth1Data for the given epoch.
     EpochUnavailable,
@@ -573,16 +573,16 @@ mod test {
     mod eth1_chain_json_backend {
         use super::*;
         use eth1::DepositLog;
-        use store::MemoryStore;
+        use store::TempStore;
         use types::test_utils::{generate_deterministic_keypair, TestingDepositBuilder};
 
-        fn get_eth1_chain() -> Eth1Chain<CachingEth1Backend<E, MemoryStore<E>>, E, MemoryStore<E>> {
+        fn get_eth1_chain() -> Eth1Chain<CachingEth1Backend<E, TempStore<E>>, E, TempStore<E>> {
             let eth1_config = Eth1Config {
                 ..Eth1Config::default()
             };
 
             let log = null_logger().unwrap();
-            let store = Arc::new(MemoryStore::open());
+            let store = Arc::new(TempStore::open().unwrap());
             Eth1Chain::new(CachingEth1Backend::new(eth1_config, log, store))
         }
 

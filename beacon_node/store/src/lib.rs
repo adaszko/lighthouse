@@ -3,7 +3,7 @@
 //! Provides the following stores:
 //!
 //! - `DiskStore`: an on-disk store backed by leveldb. Used in production.
-//! - `MemoryStore`: an in-memory store backed by a hash-map. Used for testing.
+//! - `TempStore`: similar to `DiskStore` but shouldn't `fsync()` for efficiency. Used for testing.
 //!
 //! Provides a simple API for storing/retrieving all types that sometimes needs type-hints. See
 //! tests for implementation examples.
@@ -18,7 +18,6 @@ mod forwards_iter;
 pub mod hot_cold_store;
 mod impls;
 mod leveldb_store;
-mod memory_store;
 mod metrics;
 mod partial_beacon_state;
 mod state_batch;
@@ -29,8 +28,7 @@ use std::sync::Arc;
 
 pub use self::config::StoreConfig;
 pub use self::hot_cold_store::{HotColdDB as DiskStore, HotStateSummary};
-pub use self::leveldb_store::LevelDB as SimpleDiskStore;
-pub use self::memory_store::MemoryStore;
+pub use self::leveldb_store::{LevelDB as SimpleDiskStore, TempStore};
 pub use self::partial_beacon_state::PartialBeaconState;
 pub use errors::Error;
 pub use impls::beacon_state::StorageContainer as BeaconStateStorageContainer;
@@ -337,20 +335,20 @@ mod tests {
         let key = Hash256::random();
         let item = StorableThing { a: 1, b: 42 };
 
-        assert_eq!(store.exists::<StorableThing>(&key), Ok(false));
+        assert_eq!(store.exists::<StorableThing>(&key).unwrap(), false);
 
         store.put(&key, &item).unwrap();
 
-        assert_eq!(store.exists::<StorableThing>(&key), Ok(true));
+        assert_eq!(store.exists::<StorableThing>(&key).unwrap(), true);
 
         let retrieved = store.get(&key).unwrap().unwrap();
         assert_eq!(item, retrieved);
 
         store.delete::<StorableThing>(&key).unwrap();
 
-        assert_eq!(store.exists::<StorableThing>(&key), Ok(false));
+        assert_eq!(store.exists::<StorableThing>(&key).unwrap(), false);
 
-        assert_eq!(store.get::<StorableThing>(&key), Ok(None));
+        assert_eq!(store.get::<StorableThing>(&key).unwrap(), None);
     }
 
     #[test]
@@ -380,29 +378,5 @@ mod tests {
         let store = SimpleDiskStore::open(&path).unwrap();
 
         test_impl(store);
-    }
-
-    #[test]
-    fn memorydb() {
-        let store = MemoryStore::open();
-
-        test_impl(store);
-    }
-
-    #[test]
-    fn exists() {
-        let store = MemoryStore::<MinimalEthSpec>::open();
-        let key = Hash256::random();
-        let item = StorableThing { a: 1, b: 42 };
-
-        assert_eq!(store.exists::<StorableThing>(&key).unwrap(), false);
-
-        store.put(&key, &item).unwrap();
-
-        assert_eq!(store.exists::<StorableThing>(&key).unwrap(), true);
-
-        store.delete::<StorableThing>(&key).unwrap();
-
-        assert_eq!(store.exists::<StorableThing>(&key).unwrap(), false);
     }
 }

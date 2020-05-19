@@ -10,6 +10,7 @@ use leveldb::error::Error as LevelDBError;
 use leveldb::options::{Options, ReadOptions, WriteOptions};
 use std::marker::PhantomData;
 use std::path::Path;
+use tempfile::tempdir;
 
 /// A wrapped leveldb database.
 pub struct LevelDB<E: EthSpec> {
@@ -44,6 +45,75 @@ impl<E: EthSpec> LevelDB<E> {
         let mut col = col.as_bytes().to_vec();
         col.append(&mut key.to_vec());
         BytesKey { key: col }
+    }
+}
+
+pub struct TempStore<E: EthSpec> {
+    _dir: tempfile::TempDir,
+    db: Arc<LevelDB<E>>,
+}
+
+impl<E: EthSpec> Store<E> for TempStore<E> {
+    type ForwardsBlockRootsIterator = SimpleForwardsBlockRootsIterator;
+
+    fn get_bytes(&self, col: &str, key: &[u8]) -> Result<Option<Vec<u8>>, Error> {
+        self.db.get_bytes(col, key)
+    }
+
+    fn put_bytes(&self, col: &str, key: &[u8], val: &[u8]) -> Result<(), Error> {
+        self.db.put_bytes(col, key, val)
+    }
+
+    fn key_exists(&self, col: &str, key: &[u8]) -> Result<bool, Error> {
+        self.db.key_exists(col, key)
+    }
+
+    fn key_delete(&self, col: &str, key: &[u8]) -> Result<(), Error> {
+        self.db.key_delete(col, key)
+    }
+
+    fn put_state(&self, state_root: &Hash256, state: &BeaconState<E>) -> Result<(), Error> {
+        self.db.put_state(state_root, state)
+    }
+
+    fn get_state(
+        &self,
+        state_root: &Hash256,
+        slot: Option<Slot>,
+    ) -> Result<Option<BeaconState<E>>, Error> {
+        self.db.get_state(state_root, slot)
+    }
+
+    fn forwards_block_roots_iterator(
+        store: Arc<TempStore<E>>,
+        start_slot: Slot,
+        end_state: BeaconState<E>,
+        end_block_root: Hash256,
+        spec: &ChainSpec,
+    ) -> Self::ForwardsBlockRootsIterator {
+        LevelDB::forwards_block_roots_iterator(
+            Arc::clone(&store.db),
+            start_slot,
+            end_state,
+            end_block_root,
+            spec,
+        )
+    }
+
+    fn do_atomically(&self, batch: &[StoreOp]) -> Result<(), Error> {
+        self.db.do_atomically(batch)
+    }
+}
+
+impl<E: EthSpec> TempStore<E> {
+    pub fn open() -> Result<Self, Error> {
+        let dir = tempdir()?;
+        let db = LevelDB::open(dir.path())?;
+        let guard = Self {
+            _dir: dir,
+            db: Arc::new(db),
+        };
+        Ok(guard)
     }
 }
 

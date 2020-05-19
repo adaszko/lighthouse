@@ -343,7 +343,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::MemoryStore;
+    use crate::TempStore;
     use types::{test_utils::TestingBeaconStateBuilder, Keypair, MainnetEthSpec};
 
     fn get_state<T: EthSpec>() -> BeaconState<T> {
@@ -358,7 +358,7 @@ mod test {
 
     #[test]
     fn block_root_iter() {
-        let store = Arc::new(MemoryStore::open());
+        let store = Arc::new(TempStore::open().unwrap());
         let slots_per_historical_root = MainnetEthSpec::slots_per_historical_root();
 
         let mut state_a: BeaconState<MainnetEthSpec> = get_state();
@@ -401,7 +401,7 @@ mod test {
 
     #[test]
     fn state_root_iter() {
-        let store = Arc::new(MemoryStore::open());
+        let store = Arc::new(TempStore::open().unwrap());
         let slots_per_historical_root = MainnetEthSpec::slots_per_historical_root();
 
         let mut state_a: BeaconState<MainnetEthSpec> = get_state();

@@ -3,7 +3,7 @@ use crate::hot_cold_store::HotColdDBError;
 use ssz::DecodeError;
 use types::{BeaconStateError, Hash256};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum Error {
     SszDecodeError(DecodeError),
     VectorChunkError(ChunkError),
@@ -13,6 +13,7 @@ pub enum Error {
     DBError { message: String },
     RlpError(String),
     BlockNotFound(Hash256),
+    IOError(std::io::Error),
 }
 
 impl From<DecodeError> for Error {
@@ -42,6 +43,12 @@ impl From<BeaconStateError> for Error {
 impl From<DBError> for Error {
     fn from(e: DBError) -> Error {
         Error::DBError { message: e.message }
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Error {
+        Error::IOError(e)
     }
 }
 

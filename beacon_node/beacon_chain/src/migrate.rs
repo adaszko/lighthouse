@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::thread;
 use store::iter::{ParentRootBlockIterator, RootsIterator};
 use store::{hot_cold_store::HotColdDBError, Error, SimpleDiskStore, Store, StoreOp};
-pub use store::{DiskStore, MemoryStore};
+pub use store::{DiskStore, TempStore};
 use types::*;
 use types::{BeaconState, EthSpec, Hash256, Slot};
 
@@ -170,8 +170,8 @@ impl<E: EthSpec> Migrate<SimpleDiskStore<E>, E> for NullMigrator {
     }
 }
 
-impl<E: EthSpec> Migrate<MemoryStore<E>, E> for NullMigrator {
-    fn new(_: Arc<MemoryStore<E>>, _: Logger) -> Self {
+impl<E: EthSpec> Migrate<TempStore<E>, E> for NullMigrator {
+    fn new(_: Arc<TempStore<E>>, _: Logger) -> Self {
         NullMigrator
     }
 }

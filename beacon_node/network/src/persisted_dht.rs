@@ -58,12 +58,13 @@ mod tests {
     use eth2_libp2p::Enr;
     use std::str::FromStr;
     use std::sync::Arc;
-    use store::{MemoryStore, Store};
+    use store::{Store, TempStore};
     use types::Hash256;
     use types::MinimalEthSpec;
+
     #[test]
     fn test_persisted_dht() {
-        let store = Arc::new(MemoryStore::<MinimalEthSpec>::open());
+        let store = Arc::new(TempStore::<MinimalEthSpec>::open().unwrap());
         let enrs = vec![Enr::from_str("enr:-IS4QHCYrYZbAKWCBRlAy5zzaDZXJBGkcnh4MHcBFZntXNFrdvJjX04jRzjzCBOonrkTfj499SZuOh8R33Ls8RRcy5wBgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQPKY0yuDUmstAHYpMa2_oxVtw0RW_QAdpzBQA8yWM0xOIN1ZHCCdl8").unwrap()];
         let key = Hash256::from_slice(&DHT_DB_KEY.as_bytes());
         store

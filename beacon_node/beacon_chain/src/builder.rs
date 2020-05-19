@@ -663,7 +663,8 @@ fn genesis_block<T: EthSpec>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::migrate::{MemoryStore, NullMigrator};
+    use crate::migrate::NullMigrator;
+    use crate::store::TempStore;
     use eth2_hashing::hash;
     use genesis::{generate_deterministic_keypairs, interop_genesis_state};
     use sloggers::{null::NullLoggerBuilder, Build};
@@ -685,7 +686,7 @@ mod test {
         let genesis_time = 13_371_337;
 
         let log = get_logger();
-        let store = Arc::new(MemoryStore::open());
+        let store = Arc::new(TempStore::open().expect("should open database"));
         let spec = MinimalEthSpec::default_spec();
         let data_dir = tempdir().expect("should create temporary data_dir");
 

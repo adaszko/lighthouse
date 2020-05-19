@@ -17,7 +17,7 @@ mod tests {
     use sloggers::{null::NullLoggerBuilder, Build};
     use slot_clock::{SlotClock, SystemTimeSlotClock};
     use std::time::SystemTime;
-    use store::MemoryStore;
+    use store::TempStore;
     use tempfile::tempdir;
     use tokio::time::Duration;
     use types::{CommitteeIndex, EnrForkId, EthSpec, MinimalEthSpec};
@@ -25,10 +25,10 @@ mod tests {
     const SLOT_DURATION_MILLIS: u64 = 2000;
 
     type TestBeaconChainType = Witness<
-        MemoryStore<MinimalEthSpec>,
+        TempStore<MinimalEthSpec>,
         NullMigrator,
         SystemTimeSlotClock,
-        CachingEth1Backend<MinimalEthSpec, MemoryStore<MinimalEthSpec>>,
+        CachingEth1Backend<MinimalEthSpec, TempStore<MinimalEthSpec>>,
         MinimalEthSpec,
         NullEventHandler<MinimalEthSpec>,
     >;
@@ -49,7 +49,7 @@ mod tests {
                 BeaconChainBuilder::new(MinimalEthSpec)
                     .logger(log.clone())
                     .custom_spec(spec.clone())
-                    .store(Arc::new(MemoryStore::open()))
+                    .store(Arc::new(TempStore::open().unwrap()))
                     .store_migrator(NullMigrator)
                     .data_dir(data_dir.path().to_path_buf())
                     .genesis_state(

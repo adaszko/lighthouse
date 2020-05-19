@@ -6,7 +6,7 @@ use beacon_chain::{
     eth1_chain::{CachingEth1Backend, Eth1Chain},
     migrate::{BackgroundMigrator, Migrate, NullMigrator},
     slot_clock::{SlotClock, SystemTimeSlotClock},
-    store::{DiskStore, MemoryStore, SimpleDiskStore, Store, StoreConfig},
+    store::{DiskStore, SimpleDiskStore, Store, StoreConfig, TempStore},
     BeaconChain, BeaconChainTypes, Eth1ChainBackend, EventHandler,
 };
 use environment::RuntimeContext;
@@ -40,7 +40,7 @@ pub const ETH1_GENESIS_UPDATE_INTERVAL_MILLIS: u64 = 7_000;
 ///
 /// If type inference errors are raised, ensure all necessary components have been initialized. For
 /// example, the compiler will be unable to infer `T::Store` unless `self.disk_store(..)` or
-/// `self.memory_store(..)` has been called.
+/// `self.temporary_store(..)` has been called.
 pub struct ClientBuilder<T: BeaconChainTypes> {
     slot_clock: Option<T::SlotClock>,
     store: Option<Arc<T::Store>>,
@@ -531,7 +531,7 @@ where
 impl<TSlotClock, TEth1Backend, TEthSpec, TEventHandler>
     ClientBuilder<
         Witness<
-            MemoryStore<TEthSpec>,
+            TempStore<TEthSpec>,
             NullMigrator,
             TSlotClock,
             TEth1Backend,
@@ -541,18 +541,19 @@ impl<TSlotClock, TEth1Backend, TEthSpec, TEventHandler>
     >
 where
     TSlotClock: SlotClock + 'static,
-    TEth1Backend: Eth1ChainBackend<TEthSpec, MemoryStore<TEthSpec>> + 'static,
+    TEth1Backend: Eth1ChainBackend<TEthSpec, TempStore<TEthSpec>> + 'static,
     TEthSpec: EthSpec + 'static,
     TEventHandler: EventHandler<TEthSpec> + 'static,
 {
-    /// Specifies that the `Client` should use a `MemoryStore` database.
+    /// Specifies that the `Client` should use a `TempStore` database.
     ///
     /// Also sets the `store_migrator` to the `NullMigrator`, as that's the only viable choice.
-    pub fn memory_store(mut self) -> Self {
-        let store = MemoryStore::open();
+    pub fn temporary_store(mut self) -> Result<Self, String> {
+        let store =
+            TempStore::open().map_err(|e| format!("Unable to open temporary database: {:?}", e))?;
         self.store = Some(Arc::new(store));
         self.store_migrator = Some(NullMigrator);
-        self
+        Ok(self)
     }
 }
 

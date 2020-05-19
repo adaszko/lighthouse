@@ -18,7 +18,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use store::{DiskStore, MemoryStore, Store};
+use store::{DiskStore, Store, TempStore};
 use tempfile::{tempdir, TempDir};
 use tree_hash::TreeHash;
 use types::{
@@ -43,7 +43,7 @@ pub type BaseHarnessType<TStore, TStoreMigrator, TEthSpec> = Witness<
     NullEventHandler<TEthSpec>,
 >;
 
-pub type HarnessType<E> = BaseHarnessType<MemoryStore<E>, NullMigrator, E>;
+pub type HarnessType<E> = BaseHarnessType<TempStore<E>, NullMigrator, E>;
 pub type DiskHarnessType<E> = BaseHarnessType<DiskStore<E>, BlockingMigrator<DiskStore<E>>, E>;
 
 /// Indicates how the `BeaconChainHarness` should produce blocks.
@@ -109,7 +109,7 @@ impl<E: EthSpec> BeaconChainHarness<HarnessType<E>> {
         let chain = BeaconChainBuilder::new(eth_spec_instance)
             .logger(log.clone())
             .custom_spec(spec.clone())
-            .store(Arc::new(MemoryStore::open()))
+            .store(Arc::new(TempStore::open().expect("should open database")))
             .store_migrator(NullMigrator)
             .data_dir(data_dir.path().to_path_buf())
             .genesis_state(
