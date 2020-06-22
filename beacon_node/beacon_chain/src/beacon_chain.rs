@@ -1503,7 +1503,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Store all the states between the parent block state and this block's slot, the block and state.
         ops.push(StoreOp::PutBlock(block_root.into(), signed_block.clone()));
-        ops.push(StoreOp::PutState(block.state_root.into(), Cow::Borrowed(&state)));
+        ops.push(StoreOp::PutState(
+            block.state_root.into(),
+            Cow::Borrowed(&state),
+        ));
         self.store.do_atomically(ops)?;
 
         let parent_root = block.parent_root;
