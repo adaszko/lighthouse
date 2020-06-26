@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - atomic-freezer-migration
   pull_request:
 
 jobs:
