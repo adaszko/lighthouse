@@ -298,6 +298,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "slog",
+ "slog-term",
  "sloggers",
  "slot_clock",
  "state_processing",
