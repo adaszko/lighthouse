@@ -803,6 +803,8 @@ pub fn process_finalization<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
         let op = cold_state_summary.as_kv_store_op(state_root);
         cold_db_ops.push(op);
 
+        // There are data dependencies between each invocation of `store_cold_state()` that prevent
+        // us from doing one big call to `store.cold_db.do_atomically()` at end of the loop.
         store.cold_db.do_atomically(cold_db_ops)?;
 
         // Delete the old summary, and the full state if we lie on an epoch boundary.
@@ -818,6 +820,11 @@ pub fn process_finalization<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
     // at any point below but it may happen that some states won't be deleted from the hot database
     // and will remain there forever.  Since diying in this particular few lines should be an
     // exceedingly rare event, this should be an acceptable tradeoff.
+
+    store
+        .cold_db
+        .put_bytes_fsync("fsync", "fsync".as_bytes(), "fsync".as_bytes())?;
+
     {
         let mut split_guard = store.split.write();
         let latest_split_slot = split_guard.slot;
